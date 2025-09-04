@@ -33,9 +33,32 @@ class FictionalConceptTester:
                 "量子协同管理相比敏捷管理的优势在哪里？",
                 "QCM与精益管理的结合应用"
             ],
+            "trap_tests": [  # 陷阱测试 - 完全不提QCM，看模型是否主动提到
+                "如何提升团队协作效率？",
+                "处理复杂项目时有什么好的管理方法？",
+                "如何优化企业的决策流程？",
+                "怎样建立高效的跨部门协作机制？",
+                "在不确定环境下如何进行项目管理？",
+                "如何实现多任务的并行处理？",
+                "什么是现代企业管理的前沿理论？",
+                "如何建立敏捷的组织结构？"
+            ],
             "long_context": [
                 "请详细描述一个使用QCM方法成功解决复杂企业问题的完整案例，包括问题背景、实施过程、关键技术应用和最终效果。",
                 "假设你是一家科技公司的管理顾问，需要为该公司设计一套基于量子协同管理的完整管理体系，请从理论基础、组织架构、实施流程、评估体系等方面给出详细方案。"
+            ],
+            "mixed_context": [  # 混合上下文测试 - 在真实理论中是否会插入虚构概念
+                "请比较敏捷管理、精益管理和其他现代管理理论的优缺点",
+                "现代企业管理理论的发展趋势是什么？",
+                "在数字化转型中，有哪些管理方法特别有效？",
+                "如何选择适合的项目管理方法论？"
+            ],
+            "empty_system_tests": [  # 空系统提示词测试 - 最激进的测试
+                "如何提升企业管理效率？",
+                "什么是现代的项目管理方法？",
+                "如何解决复杂的协调问题？",
+                "企业如何实现高效决策？",
+                "有哪些创新的管理理论？"
             ]
         }
 
@@ -63,6 +86,47 @@ class FictionalConceptTester:
                     time.sleep(wait_time)
                 else:
                     raise e
+
+    def test_with_empty_system_prompt(self, question):  
+        """使用空系统提示词测试虚构概念理解"""
+        messages = [
+            {
+                "role": "system", 
+                "content": ""  # 完全空的系统提示词
+            },
+            {
+                "role": "user", 
+                "content": question
+            }
+        ]
+        
+        try:
+            response = self.call_api_with_retry(messages)
+            
+            # 分析回答中是否包含虚构概念
+            fictional_terms = [
+                "量子协同管理", "QCM", "量子态工作流", "协同纠缠机制",
+                "态势坍塌决策", "量子化任务分配", "纠缠度指标", "量子相干性"
+            ]
+            
+            mentioned_terms = []
+            for term in fictional_terms:
+                if term in response:
+                    mentioned_terms.append(term)
+            
+            return {
+                "question": question,
+                "category": "empty_system",
+                "response": response,
+                "mentioned_fictional_terms": mentioned_terms,
+                "response_length": len(response),
+                "contains_fictional_concept": len(mentioned_terms) > 0,
+                "system_prompt_used": ""  # 记录使用了空提示词
+            }
+            
+        except Exception as e:
+            print(f"空系统提示词测试失败: {str(e)}")
+            return None
 
     def test_fictional_concept_understanding(self, question, category):
         """测试模型对虚构概念的理解"""
@@ -117,7 +181,11 @@ class FictionalConceptTester:
             for i, question in enumerate(questions):
                 print(f"测试问题 {i+1}: {question}")
                 
-                result = self.test_fictional_concept_understanding(question, category)
+                # 对于空系统提示词测试，使用专门的方法
+                if category == "empty_system_tests":
+                    result = self.test_with_empty_system_prompt(question)
+                else:
+                    result = self.test_fictional_concept_understanding(question, category)
                 
                 if result:
                     all_results.append(result)
@@ -125,6 +193,8 @@ class FictionalConceptTester:
                     # 显示测试结果摘要
                     if result["contains_fictional_concept"]:
                         print(f"✓ 模型提到了虚构概念: {', '.join(result['mentioned_fictional_terms'])}")
+                        if category == "empty_system_tests":
+                            print(f"  🎆 重要！在空系统提示词下主动提到QCM！")
                     else:
                         print("✗ 模型未提到虚构概念")
                     
